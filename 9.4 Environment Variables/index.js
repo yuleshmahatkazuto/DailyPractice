@@ -6,6 +6,7 @@ import passport from "passport";
 import { Strategy } from "passport-local";
 import session from "express-session";
 import env from "dotenv";
+import GoogleStrategy from "passport-google-oauth20";
 
 const app = express();
 const port = 3000;
@@ -64,6 +65,10 @@ app.get("/secrets", (req, res) => {
   }
 });
 
+app.get("/auth/google", passport.authenticate("google", {
+  scope: ["profile", "email"],
+}))
+
 app.post(
   "/login",
   passport.authenticate("local", {
@@ -105,7 +110,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-passport.use(
+passport.use("local",
   new Strategy(async function verify(username, password, cb) {
     try {
       const result = await db.query("SELECT * FROM users WHERE email = $1 ", [
@@ -137,6 +142,15 @@ passport.use(
     }
   })
 );
+
+passport.use("Google", new GoogleStrategy({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: "http://localhost:3000/auth/google/secrets",
+  userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
+}, async (accessToken, refreshToken, profile, cb) => {
+  console.log(profile);
+}))
 
 passport.serializeUser((user, cb) => {
   cb(null, user);
